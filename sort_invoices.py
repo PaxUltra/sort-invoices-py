@@ -1,5 +1,6 @@
 import sys
 import os
+import mimetypes
 
 def process_args(args):
     source_arg = args[1] if len(args) > 1 else ""
@@ -32,7 +33,7 @@ def get_file_names(source_path):
 
     try:
         file_names = [
-            file for file in os.listdir(source_path)
+            os.path.join(source_path, file) for file in os.listdir(source_path)
             if os.path.isfile(os.path.join(source_path, file))
             and os.path.splitext(file)[1].lower() in supported_extensions
         ]
@@ -42,6 +43,53 @@ def get_file_names(source_path):
     except NotADirectoryError:
         raise NotADirectoryError(f"Error: '{source_path}' is not a directory.")
 
+def extract_from_txt(file_path):
+    client = None
+    date = None
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+            for line in content.splitlines():
+                line = line.strip()
+
+                if line.lower().startswith("client:"):
+                    client = line.split(":", 1)[1].strip()
+                elif line.lower().startswith("date:"):
+                    date = line.split(":", 1)[1].strip()
+
+                # Breakout early if we find what we are looking for
+                if client and date:
+                    break
+
+            return client, date
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Error: File '{file_path}' not found.")
+    except PermissionError:
+        raise PermissionError(f"Error: Permission denied for '{file_path}'.")
+    except IsADirectoryError:
+        raise IsADirectoryError(f"Error: Expected a file, but found a directory - '{file_path}'")
+    except UnicodeDecodeError:
+        raise UnicodeDecodeError(f"Error: Cannot decode file '{file_path}'.")
+    except (IOError, OSError) as e:
+        raise RuntimeError(f"Error: An I/O error occurred while reading '{file_path}' - {e}")
+
+def get_client_and_date(files):
+    data = []
+
+    for file in files:
+        mime_type, _ = mimetypes.guess_type(file)
+        if mime_type == "text/plain":
+            client, date = extract_from_txt(file)
+            data.append({
+                "path": file,
+                "client": client,
+                "date": date
+            })
+
+    return data
+
 def main(args):
     try:
         # Accept file path
@@ -49,13 +97,13 @@ def main(args):
         source_arg, destination_arg = process_args(args)
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
 
-        print(source_path)
-        print(destination_path)
-
         # Read files
         files = get_file_names(source_path)
 
-        print(files)
+        # Parse Client Name and Date
+        invoice_data = get_client_and_date(files)
+
+        print(invoice_data)
 
     except ValueError as e:
         print(e)
@@ -63,10 +111,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # Read files
-
-    # Parse Client Name and Date
-
     # Create Client folder
 
     # Save new file with Client Name and Date
