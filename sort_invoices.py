@@ -2,6 +2,8 @@ import sys
 import os
 import mimetypes
 import fitz
+from docx import Document
+from docx.opc.exceptions import PackageNotFoundError
 
 def process_args(args):
     source_arg = args[1] if len(args) > 1 else ""
@@ -94,17 +96,31 @@ def extract_from_pdf(file_path):
     except TypeError:
         raise TypeError(f"Error: '{file_path}' is an invalid argument for fitz.open().")
 
+def extract_from_docx(file_path):
+    try:
+        doc = Document(file_path)
+        content = "\n".join([para.text for para in doc.paragraphs])
+        return get_client_and_date_from_string(content)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Error: File '{file_path}' not found.")
+    except PermissionError:
+        raise PermissionError(f"Error: Permission denied for '{file_path}'.")
+    except PackageNotFoundError:
+        raise PackageNotFoundError(f"Error: '{file_path}' is not a valid .docx file.")
+    except (TypeError, AttributeError) as e:
+        raise TypeError(f"Error: '{file_path}' content is malformed -")
+
 def process_files(files):
     data = []
     supported_mimetypes = {
-        "text/plain": extract_from_txt,
-        "application/pdf": extract_from_pdf
+        ".txt": extract_from_txt,
+        ".pdf": extract_from_pdf,
+        ".docx": extract_from_docx
     }
 
     for file in files:
-        mime_type, _ = mimetypes.guess_type(file)
-
-        client, date = supported_mimetypes.get(mime_type, lambda *args: ("Unknown", "Unknown"))(file)
+        _, extension = os.path.splitext(file)
+        client, date = supported_mimetypes.get(extension, lambda *args: ("Unknown", "Unknown"))(file)
         data.append({
                 "path": file,
                 "client": client,
