@@ -1,0 +1,3 @@
+Client: Mary Smith
+Date: 2023-12-01
+Amount: $300

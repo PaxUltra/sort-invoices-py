@@ -1,6 +1,7 @@
 import sys
 import os
 import mimetypes
+import fitz
 
 def process_args(args):
     source_arg = args[1] if len(args) > 1 else ""
@@ -43,15 +44,11 @@ def get_file_names(source_path):
     except NotADirectoryError:
         raise NotADirectoryError(f"Error: '{source_path}' is not a directory.")
 
-def extract_from_txt(file_path):
+def get_client_and_date_from_string(content):
     client = None
     date = None
 
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-            for line in content.splitlines():
+    for line in content.splitlines():
                 line = line.strip()
 
                 if line.lower().startswith("client:"):
@@ -63,7 +60,13 @@ def extract_from_txt(file_path):
                 if client and date:
                     break
 
-            return client, date
+    return client, date
+
+def extract_from_txt(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            return get_client_and_date_from_string(content)
     except FileNotFoundError:
         raise FileNotFoundError(f"Error: File '{file_path}' not found.")
     except PermissionError:
@@ -75,14 +78,34 @@ def extract_from_txt(file_path):
     except (IOError, OSError) as e:
         raise RuntimeError(f"Error: An I/O error occurred while reading '{file_path}' - {e}")
 
-def get_client_and_date(files):
+def extract_from_pdf(file_path):
+    try:
+        with fitz.open(file_path) as f:
+            content = ""
+            for page in f:
+                content += page.get_text()
+            return get_client_and_date_from_string(content)
+    except RuntimeError:
+        raise RuntimeError(f"Error: File '{file_path}' unreadable.")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Error: File '{file_path}' not found.")
+    except PermissionError:
+        raise PermissionError(f"Error: Permission denied for '{file_path}'.")
+    except TypeError:
+        raise TypeError(f"Error: '{file_path}' is an invalid argument for fitz.open().")
+
+def process_files(files):
     data = []
+    supported_mimetypes = {
+        "text/plain": extract_from_txt,
+        "application/pdf": extract_from_pdf
+    }
 
     for file in files:
         mime_type, _ = mimetypes.guess_type(file)
-        if mime_type == "text/plain":
-            client, date = extract_from_txt(file)
-            data.append({
+
+        client, date = supported_mimetypes.get(mime_type, lambda *args: ("Unknown", "Unknown"))(file)
+        data.append({
                 "path": file,
                 "client": client,
                 "date": date
@@ -101,15 +124,13 @@ def main(args):
         files = get_file_names(source_path)
 
         # Parse Client Name and Date
-        invoice_data = get_client_and_date(files)
+        invoice_data = process_files(files)
 
         print(invoice_data)
 
     except ValueError as e:
         print(e)
     
-
-
 if __name__ == "__main__":
     # Create Client folder
 
