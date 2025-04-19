@@ -1,9 +1,16 @@
 import sys
 import os
-import mimetypes
 import fitz
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
+from dateutil import parser
+
+def normalize_date(raw_date):
+    try:
+        parsed = parser.parse(raw_date)
+        return parsed.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return "Unknown"
 
 def process_args(args):
     source_arg = args[1] if len(args) > 1 else ""
@@ -56,7 +63,7 @@ def get_client_and_date_from_string(content):
                 if line.lower().startswith("client:"):
                     client = line.split(":", 1)[1].strip()
                 elif line.lower().startswith("date:"):
-                    date = line.split(":", 1)[1].strip()
+                    date = normalize_date(line.split(":", 1)[1].strip())
 
                 # Breakout early if we find what we are looking for
                 if client and date:
@@ -144,7 +151,7 @@ def main(args):
 
         print(invoice_data)
 
-    except ValueError as e:
+    except Exception as e:
         print(e)
     
 if __name__ == "__main__":
