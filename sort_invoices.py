@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import fitz
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
@@ -8,7 +9,7 @@ from dateutil import parser
 def normalize_date(raw_date):
     try:
         parsed = parser.parse(raw_date)
-        return parsed.strftime("%Y-%m-%d")
+        return parsed.strftime("%Y-%m-%d") # YYYY-MM-DD
     except (ValueError, TypeError):
         return "Unknown"
 
@@ -136,6 +137,22 @@ def process_files(files):
 
     return data
 
+def rename_and_move_files(destination_path, invoice_data_dict):
+    for invoice in invoice_data_dict:
+        source_path = invoice.get("path")
+        _, extension = os.path.splitext(source_path)
+        client = invoice.get("client", "Unknown")
+        date = invoice.get("date", "Unknown")
+
+        # Create Client folder
+        client_folder = os.path.join(destination_path, invoice.get("client", "Unsorted"))
+        os.makedirs(client_folder, exist_ok=True)
+
+        # Save new file with Client Name and Date
+        new_file_name = f"{date}_Invoice{extension}"
+        new_file_path = os.path.join(client_folder, new_file_name)
+        shutil.copy2(source_path, new_file_path)
+
 def main(args):
     try:
         # Accept file path
@@ -151,12 +168,11 @@ def main(args):
 
         print(invoice_data)
 
+        # Create Client folder
+        rename_and_move_files(destination_path, invoice_data)
+
     except Exception as e:
         print(e)
     
 if __name__ == "__main__":
-    # Create Client folder
-
-    # Save new file with Client Name and Date
-
     main(sys.argv)
