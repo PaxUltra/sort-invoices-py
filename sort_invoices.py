@@ -2,10 +2,26 @@ import sys
 import os
 import shutil
 import fitz
+import logging
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
 from dateutil import parser
 from datetime import datetime
+
+def configure_logger(destination_path):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+
+    log_path = os.path.join(destination_path, "sort_invoices.log")
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setFormatter(formatter)
+
+    if not logger.hasHandlers():
+        logger.addHandler(file_handler)
+
+    return logger
 
 def normalize_date(raw_date):
     try:
@@ -162,19 +178,20 @@ def main(args):
         source_arg, destination_arg = process_args(args)
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
 
+        # Configure logging
+        logger = configure_logger(destination_path)
+
         # Read files
         files = get_file_names(source_path)
 
         # Parse Client Name and Date
         invoice_data = process_files(files)
 
-        print(invoice_data)
-
         # Create Client folder
         rename_and_move_files(destination_path, invoice_data)
 
     except Exception as e:
-        print(e)
+        logger.exception(e)
     
 if __name__ == "__main__":
     main(sys.argv)
