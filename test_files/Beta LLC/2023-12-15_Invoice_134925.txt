@@ -1,3 +1,0 @@
-Client: Beta LLC
-Date: 2023-12-15
-Amount: $1800

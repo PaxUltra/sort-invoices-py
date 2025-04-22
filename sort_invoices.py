@@ -142,11 +142,12 @@ def rename_and_move_files(destination_path, invoice_data_dict):
     for invoice in invoice_data_dict:
         source_path = invoice.get("path")
         _, extension = os.path.splitext(source_path)
+        client = invoice.get("client", "Unsorted").strip().title()
         date = invoice.get("date", "Unknown")
         timestamp = datetime.now().strftime("%H%M%S")
 
         # Create Client folder
-        client_folder = os.path.join(destination_path, invoice.get("client", "Unsorted"))
+        client_folder = os.path.join(destination_path, client)
         os.makedirs(client_folder, exist_ok=True)
 
         # Save new file with Client Name and Date
