@@ -8,14 +8,13 @@ from docx.opc.exceptions import PackageNotFoundError
 from dateutil import parser
 from datetime import datetime
 
-def configure_logger(destination_path):
+def configure_logger():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
-    log_path = os.path.join(destination_path, "sort_invoices.log")
-    file_handler = logging.FileHandler(log_path)
+    file_handler = logging.FileHandler("sort_invoices.log")
     file_handler.setFormatter(formatter)
 
     if not logger.hasHandlers():
@@ -172,14 +171,14 @@ def rename_and_move_files(destination_path, invoice_data_dict):
         shutil.copy2(source_path, new_file_path)
 
 def main(args):
+    # Configure logging
+    logger = configure_logger()
+
     try:
         # Accept file path
         # The source will always be the first argument, and the destination will be the second
         source_arg, destination_arg = process_args(args)
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
-
-        # Configure logging
-        logger = configure_logger(destination_path)
 
         # Read files
         files = get_file_names(source_path)
