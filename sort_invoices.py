@@ -34,6 +34,7 @@ def process_args():
     arg_parser = argparse.ArgumentParser(description="Sort and organize invoices.")
     arg_parser.add_argument("source", nargs="?", default="", help="Source directory")
     arg_parser.add_argument("destination", nargs="?", default="", help="Destination directory")
+    arg_parser.add_argument("--dry-run", action="store_true", help="Preview actions without modifying files")
 
     return arg_parser.parse_args()
 
@@ -183,6 +184,7 @@ def main():
         args = process_args()
         source_arg = args.source
         destination_arg = args.destination
+        dry_run = args.dry_run
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
 
         # Read files
