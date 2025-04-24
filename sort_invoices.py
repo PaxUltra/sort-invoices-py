@@ -3,6 +3,7 @@ import os
 import shutil
 import fitz
 import logging
+import argparse
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
 from dateutil import parser
@@ -29,10 +30,12 @@ def normalize_date(raw_date):
     except (ValueError, TypeError):
         return "Unknown"
 
-def process_args(args):
-    source_arg = args[1] if len(args) > 1 else ""
-    destination_arg = args[2] if len(args) > 2 else ""
-    return source_arg, destination_arg
+def process_args():
+    arg_parser = argparse.ArgumentParser(description="Sort and organize invoices.")
+    arg_parser.add_argument("source", nargs="?", default="", help="Source directory")
+    arg_parser.add_argument("destination", nargs="?", default="", help="Destination directory")
+
+    return arg_parser.parse_args()
 
 def get_file_paths(source_arg, destination_arg):
     current_dir = os.getcwd()
@@ -170,14 +173,16 @@ def rename_and_move_files(destination_path, invoice_data_dict):
         new_file_path = os.path.join(client_folder, new_file_name)
         shutil.copy2(source_path, new_file_path)
 
-def main(args):
+def main():
     # Configure logging
     logger = configure_logger()
 
     try:
         # Accept file path
         # The source will always be the first argument, and the destination will be the second
-        source_arg, destination_arg = process_args(args)
+        args = process_args()
+        source_arg = args.source
+        destination_arg = args.destination
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
 
         # Read files
@@ -193,4 +198,4 @@ def main(args):
         logger.exception(e)
     
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
