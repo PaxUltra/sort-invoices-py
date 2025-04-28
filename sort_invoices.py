@@ -188,17 +188,17 @@ def rename_and_move_files(destination_path, invoice_data_dict, logger, dry_run):
 
         # Create Client folder
         client_folder = os.path.join(destination_path, client)
-        if dry_run:
-            logger.info(f"DRY RUN: Create {client_folder} if it does not exist.")
-        else:
-            os.makedirs(client_folder, exist_ok=True)
 
         # Save new file with Client Name and Date
         new_file_name = f"{date}_Invoice_{timestamp}{extension}"
         new_file_path = os.path.join(client_folder, new_file_name)
+        
         if dry_run:
+            if not os.path.exists(client_folder):
+                logger.info(f"DRY RUN: Create {client_folder}.")
             logger.info(f"DRY RUN: Copy {source_path} to {new_file_path}, while attempting to preserve metadata.")
         else:
+            os.makedirs(client_folder, exist_ok=True)
             shutil.copy2(source_path, new_file_path)
 
 def main():
