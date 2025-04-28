@@ -13,13 +13,20 @@ def configure_logger():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
+    # TIME STAMP | LOG LEVEL | NAME | MESSAGE
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
+    # Create file handler
     file_handler = logging.FileHandler("sort_invoices.log")
     file_handler.setFormatter(formatter)
 
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+
     if not logger.hasHandlers():
         logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
 
     return logger
 
@@ -32,7 +39,8 @@ def reconfigure_file_handler(logger, destination_path):
             logger.removeHandler(handler)
 
     # Create and attach new file handler
-    file_handler = logging.FileHandler(destination_path)
+    log_location = os.path.join(destination_path, "sort_invoices.log")
+    file_handler = logging.FileHandler(log_location)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
