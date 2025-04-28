@@ -178,7 +178,7 @@ def process_files(files):
 
     return data
 
-def rename_and_move_files(destination_path, invoice_data_dict):
+def rename_and_move_files(destination_path, invoice_data_dict, logger, dry_run):
     for invoice in invoice_data_dict:
         source_path = invoice.get("path")
         _, extension = os.path.splitext(source_path)
@@ -188,12 +188,18 @@ def rename_and_move_files(destination_path, invoice_data_dict):
 
         # Create Client folder
         client_folder = os.path.join(destination_path, client)
-        os.makedirs(client_folder, exist_ok=True)
+        if dry_run:
+            logger.info(f"DRY RUN: Create {client_folder} if it does not exist.")
+        else:
+            os.makedirs(client_folder, exist_ok=True)
 
         # Save new file with Client Name and Date
         new_file_name = f"{date}_Invoice_{timestamp}{extension}"
         new_file_path = os.path.join(client_folder, new_file_name)
-        shutil.copy2(source_path, new_file_path)
+        if dry_run:
+            logger.info(f"DRY RUN: Copy {source_path} to {new_file_path}, while attempting to preserve metadata.")
+        else:
+            shutil.copy2(source_path, new_file_path)
 
 def main():
     # Configure logging
@@ -218,7 +224,7 @@ def main():
         invoice_data = process_files(files)
 
         # Create Client folder
-        rename_and_move_files(destination_path, invoice_data)
+        rename_and_move_files(destination_path, invoice_data, logger, dry_run)
 
     except Exception as e:
         logger.exception(e)
