@@ -23,6 +23,19 @@ def configure_logger():
 
     return logger
 
+def reconfigure_file_handler(logger, destination_path):
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+
+    # Remove current file handlers
+    for handler in list(logger.handlers):
+        if isinstance(handler, logging.FileHandler):
+            logger.removeHandler(handler)
+
+    # Create and attach new file handler
+    file_handler = logging.FileHandler(destination_path)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
 def normalize_date(raw_date):
     try:
         parsed = parser.parse(raw_date)
@@ -186,6 +199,9 @@ def main():
         destination_arg = args.destination
         dry_run = args.dry_run
         source_path, destination_path = get_file_paths(source_arg, destination_arg)
+
+        # Change the file path for the logger to the destination folder
+        reconfigure_file_handler(logger, destination_path)
 
         # Read files
         files = get_file_names(source_path)
