@@ -161,7 +161,7 @@ def extract_from_docx(file_path):
 
 def process_files(files):
     data = []
-    supported_mimetypes = {
+    supported_extensions = {
         ".txt": extract_from_txt,
         ".pdf": extract_from_pdf,
         ".docx": extract_from_docx
@@ -169,7 +169,7 @@ def process_files(files):
 
     for file in files:
         _, extension = os.path.splitext(file)
-        client, date = supported_mimetypes.get(extension, lambda *args: ("Unknown", "Unknown"))(file)
+        client, date = supported_extensions.get(extension, lambda *args: ("Unknown", "Unknown"))(file)
         data.append({
                 "path": file,
                 "client": client,
