@@ -1,7 +1,7 @@
 import unittest
 import os
-from unittest.mock import patch
-from sort_invoices import normalize_date, get_file_paths, get_file_names, get_client_and_date_from_string, process_files
+from unittest.mock import patch, Mock
+from sort_invoices import normalize_date, get_file_paths, get_file_names, get_client_and_date_from_string, process_files, rename_and_move_files
 
 class TestInvoiceFunctions(unittest.TestCase):
     def test_normalize_date(self):
@@ -166,3 +166,65 @@ class TestInvoiceFunctions(unittest.TestCase):
         expected_output = []
         result = process_files(test_files)
         self.assertEqual(result, expected_output)
+
+    @patch("sort_invoices.datetime")
+    def test_rename_and_move_files(self, mock_datetime):
+        # Will only test a dry-run, since the wet version just calls external functions
+        logger = Mock()
+        destination_path = "some/fake/path"
+        mock_now = mock_datetime.now.return_value
+        mock_now.strftime.return_value = "123456"
+
+        # Multiple calls
+        invoice_data = [
+            {
+                "path": "some/fake/path/foo.txt",
+                "client": "Big Company",
+                "date": "2025-04-12"
+            },
+            {
+                "path": "some/fake/path/bar.pdf",
+                "client": "Another Company",
+                "date": "2025-05-22"
+            },
+            {
+                "path": "another/fake/path/hehe.exe",
+                "client": "Unknown",
+                "date": "Unknown"
+            },
+            {
+                "path": "another/fake/path/nothehe.docx",
+                "client": "Wacky Woohoo Pizza",
+                "date": "2024-10-02"
+            }
+        ]
+        rename_and_move_files(destination_path, invoice_data, logger, dry_run=True)
+        self.assertEqual(logger.info.call_count, 8)
+
+        # Verify output validity
+        invoice_data = [
+            {
+                "path": "some/fake/path/foo.txt",
+                "client": "Big Company",
+                "date": "2025-04-12"
+            }
+        ]
+
+        expected_create_output = "DRY RUN: Create some/fake/path/Big Company."
+        expected_copy_output = "DRY RUN: Copy some/fake/path/foo.txt to some/fake/path/Big Company/2025-04-12_Invoice_123456.txt, while attempting to preserve metadata."
+        rename_and_move_files(destination_path, invoice_data, logger, dry_run=True)
+        self.assertTrue(any(expected_create_output in call.args[0] for call in logger.info.call_args_list))
+        self.assertTrue(any(expected_copy_output in call.args[0] for call in logger.info.call_args_list))
+
+        # Malformed invoice data
+        invoice_data = [
+            {
+                "path": "some/fake/path/foo.txt",
+            }
+        ]
+
+        expected_create_output = "DRY RUN: Create some/fake/path/Unsorted."
+        expected_copy_output = "DRY RUN: Copy some/fake/path/foo.txt to some/fake/path/Unsorted/Unknown_Invoice_123456.txt, while attempting to preserve metadata."
+        rename_and_move_files(destination_path, invoice_data, logger, dry_run=True)
+        self.assertTrue(any(expected_create_output in call.args[0] for call in logger.info.call_args_list))
+        self.assertTrue(any(expected_copy_output in call.args[0] for call in logger.info.call_args_list))
