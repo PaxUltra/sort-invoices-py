@@ -1,7 +1,7 @@
 import unittest
 import os
 from unittest.mock import patch
-from sort_invoices import normalize_date, get_file_paths, get_file_names, get_client_and_date_from_string
+from sort_invoices import normalize_date, get_file_paths, get_file_names, get_client_and_date_from_string, process_files
 
 class TestInvoiceFunctions(unittest.TestCase):
     def test_normalize_date(self):
@@ -121,3 +121,48 @@ class TestInvoiceFunctions(unittest.TestCase):
         client, date = get_client_and_date_from_string(test_content)
         self.assertEqual(client, expected_client)
         self.assertEqual(date, expected_date)
+
+    @patch("sort_invoices.extract_from_docx")
+    @patch("sort_invoices.extract_from_pdf")
+    @patch("sort_invoices.extract_from_txt")
+    def test_process_files(self, mock_extract_from_txt, mock_extract_from_pdf, mock_extract_from_docx):
+        # Valid list of file paths
+        test_files = [
+            "some/fake/path/foo.txt",
+            "some/fake/path/bar.pdf",
+            "another/fake/path/hehe.exe",
+            "another/fake/path/nothehe.docx"
+        ]
+        mock_extract_from_txt.return_value = ("Big Company", "2025-04-12")
+        mock_extract_from_pdf.return_value = ("Another Company", "2025-05-22")
+        mock_extract_from_docx.return_value = ("Wacky Woohoo Pizza", "2024-10-02")
+        expected_output = [
+            {
+                "path": "some/fake/path/foo.txt",
+                "client": "Big Company",
+                "date": "2025-04-12"
+            },
+            {
+                "path": "some/fake/path/bar.pdf",
+                "client": "Another Company",
+                "date": "2025-05-22"
+            },
+            {
+                "path": "another/fake/path/hehe.exe",
+                "client": "Unknown",
+                "date": "Unknown"
+            },
+            {
+                "path": "another/fake/path/nothehe.docx",
+                "client": "Wacky Woohoo Pizza",
+                "date": "2024-10-02"
+            }
+        ]
+        result = process_files(test_files)
+        self.assertEqual(result, expected_output)
+
+        # Empty file list
+        test_files = []
+        expected_output = []
+        result = process_files(test_files)
+        self.assertEqual(result, expected_output)
