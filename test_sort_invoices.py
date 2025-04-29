@@ -1,7 +1,7 @@
 import unittest
 import os
 from unittest.mock import patch
-from sort_invoices import normalize_date, get_file_paths, get_file_names
+from sort_invoices import normalize_date, get_file_paths, get_file_names, get_client_and_date_from_string
 
 class TestInvoiceFunctions(unittest.TestCase):
     def test_normalize_date(self):
@@ -88,3 +88,36 @@ class TestInvoiceFunctions(unittest.TestCase):
         with self.assertRaises(NotADirectoryError) as context:
             get_file_names("some/fake/path.txt")
         self.assertEqual(str(context.exception), "Error: 'some/fake/path.txt' is not a directory.")
+
+    def test_get_client_and_date_from_string(self):
+        # Client and date present
+        # Function hinges on 'Client:' and 'Date:' being present
+        test_content = "Client: Beta LLC\n \
+                        Date: 2023-12-15\n \
+                        Amount: $1800"
+        expected_client = "Beta LLC"
+        expected_date = "2023-12-15"
+        client, date = get_client_and_date_from_string(test_content)
+        self.assertEqual(client, expected_client)
+        self.assertEqual(date, expected_date)
+
+        # Weird formatting
+        test_content = "asdfasdfaksfdafjd;k\n" \
+        "cLiEnT: Beta LLC\n" \
+        "asdfasdfasdfasdgfdger3435234\n" \
+        "DaTe: 2023-12-15\n" \
+        "3574274hfh23974hf82y349yhf"
+        expected_client = "Beta LLC"
+        expected_date = "2023-12-15"
+        client, date = get_client_and_date_from_string(test_content)
+        self.assertEqual(client, expected_client)
+        self.assertEqual(date, expected_date)
+
+        # Client and date not present
+        # Should return None for both values
+        test_content = "Client and date are : not present : here."
+        expected_client = None
+        expected_date = None
+        client, date = get_client_and_date_from_string(test_content)
+        self.assertEqual(client, expected_client)
+        self.assertEqual(date, expected_date)
