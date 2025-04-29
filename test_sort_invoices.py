@@ -1,6 +1,7 @@
 import unittest
 import os
-from sort_invoices import normalize_date, get_file_paths
+from unittest.mock import patch
+from sort_invoices import normalize_date, get_file_paths, get_file_names
 
 class TestInvoiceFunctions(unittest.TestCase):
     def test_normalize_date(self):
@@ -46,3 +47,44 @@ class TestInvoiceFunctions(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             source_path, destination_path = get_file_paths(source_arg, destination_arg)
         self.assertEqual(str(context.exception), "Error: Destination path 'sdfsfsfds' not found, or inaccessible.")
+
+    @patch("os.path.isfile")
+    @patch("os.listdir")
+    def test_get_file_names(self, mock_listdir, mock_isfile):
+        # Valid directory, with supported extensions
+        # For this test, we are going to pretend that everything is a file
+        mock_listdir.return_value = [
+            "invoice1.pdf", "invoice2.docx", "notes.txt",
+            "image.jpg", "README.md", "folder"
+        ]
+        mock_isfile.return_value = True
+        expected_output = [
+            "some/fake/path/invoice1.pdf",
+            "some/fake/path/invoice2.docx",
+            "some/fake/path/notes.txt"
+        ]
+        result = get_file_names("some/fake/path")
+        self.assertEqual(result, expected_output)
+
+        # No files present
+        # Should return an empty list
+        mock_listdir.return_value = [
+            "foo", "bar", "notes",
+            "Desktop", "Documents", "folder"
+        ]
+        mock_isfile.return_value = False
+        expected_output = []
+        result = get_file_names("some/fake/path")
+        self.assertEqual(result, expected_output)
+
+        # FileNotFound error
+        mock_listdir.side_effect = FileNotFoundError("Error: Directory 'some/fake/path' not found.")
+        with self.assertRaises(FileNotFoundError) as context:
+            get_file_names("some/fake/path")
+        self.assertEqual(str(context.exception), "Error: Directory 'some/fake/path' not found.")
+
+        # NotADirectory error
+        mock_listdir.side_effect = NotADirectoryError("Error: 'some/fake/path.txt' is not a directory.")
+        with self.assertRaises(NotADirectoryError) as context:
+            get_file_names("some/fake/path.txt")
+        self.assertEqual(str(context.exception), "Error: 'some/fake/path.txt' is not a directory.")
