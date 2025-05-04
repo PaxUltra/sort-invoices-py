@@ -50,15 +50,21 @@ def normalize_date(raw_date):
     except (ValueError, TypeError):
         return "Unknown"
 
+def get_archive_name():
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    timestamp = datetime.now().strftime("%H%M%S")
+    return f"_archive_{current_date}_{timestamp}"
+
 def process_args():
     arg_parser = argparse.ArgumentParser(description="Sort and organize invoices.")
     arg_parser.add_argument("source", nargs="?", default="", help="Source directory")
     arg_parser.add_argument("destination", nargs="?", default="", help="Destination directory")
     arg_parser.add_argument("--dry-run", action="store_true", help="Preview actions without modifying files")
+    arg_parser.add_argument("--archive", nargs="?", const=True, help=("Move original files to an archive folder after processing. Optionally, provide a path. If no path is given, defaults to '<destination>/_archive_<date>_<timestamp>'."))
 
     return arg_parser.parse_args()
 
-def get_file_paths(source_arg, destination_arg):
+def get_file_paths(source_arg, destination_arg, archive_arg):
     current_dir = os.getcwd()
     if source_arg:
         if os.path.exists(source_arg):
@@ -76,8 +82,18 @@ def get_file_paths(source_arg, destination_arg):
     else:
         destination_path = current_dir
 
+    if archive_arg is True:
+        archive_path = os.path.join(destination_path, get_archive_name())
+    elif isinstance(archive_arg, str):
+        if os.path.exists(archive_arg):
+            archive_path = os.path.join(os.path.abspath(archive_arg), get_archive_name())
+        else:
+            raise ValueError(f"Error: Archive path '{archive_arg}' not found, or inaccessible.")
+    else:
+        archive_path = None
+
     
-    return source_path, destination_path
+    return source_path, destination_path, archive_path
 
 def get_file_names(source_path):
     supported_extensions = [".pdf", ".docx", ".txt"]
@@ -177,7 +193,7 @@ def process_files(files):
 
     return data
 
-def rename_and_move_files(destination_path, invoice_data_dict, logger, dry_run):
+def rename_and_move_files(destination_path, invoice_data_dict, logger, dry_run, archive_path):
     for invoice in invoice_data_dict:
         source_path = invoice.get("path")
         _, extension = os.path.splitext(source_path)
@@ -193,12 +209,18 @@ def rename_and_move_files(destination_path, invoice_data_dict, logger, dry_run):
         new_file_path = os.path.join(client_folder, new_file_name)
         
         if dry_run:
-            if not os.path.exists(client_folder):
-                logger.info(f"DRY RUN: Create {client_folder}.")
             logger.info(f"DRY RUN: Copy {source_path} to {new_file_path}, while attempting to preserve metadata.")
         else:
             os.makedirs(client_folder, exist_ok=True)
             shutil.copy2(source_path, new_file_path)
+
+        if archive_path:
+            archived_file_path = os.path.join(archive_path, os.path.basename(source_path))
+            if dry_run:
+                logger.info(f"DRY RUN: Move {source_path} to {archived_file_path}.")
+            else:
+                os.makedirs(archive_path, exist_ok=True)
+                shutil.move(source_path, archived_file_path)
 
 def main():
     # Configure logging
@@ -211,7 +233,8 @@ def main():
         source_arg = args.source
         destination_arg = args.destination
         dry_run = args.dry_run
-        source_path, destination_path = get_file_paths(source_arg, destination_arg)
+        archive_arg = args.archive
+        source_path, destination_path, archive_path = get_file_paths(source_arg, destination_arg, archive_arg)
 
         # Change the file path for the logger to the destination folder
         reconfigure_file_handler(logger, destination_path)
@@ -223,7 +246,7 @@ def main():
         invoice_data = process_files(files)
 
         # Create Client folder
-        rename_and_move_files(destination_path, invoice_data, logger, dry_run)
+        rename_and_move_files(destination_path, invoice_data, logger, dry_run, archive_path)
 
     except Exception as e:
         logger.exception(e)
